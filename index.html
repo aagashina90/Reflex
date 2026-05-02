@@ -2,9 +2,10 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Информатика – Рефлексия</title>
   <style>
+    /* Стили оставлены те же, что и в предыдущем ответе */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
@@ -48,7 +49,7 @@
     }
     .admin-hidden-link:hover { color: rgba(255,255,255,0.5); }
 
-    /* СТРАНИЦА ОПРОСА (РЕФЛЕКСИЯ) */
+    /* СТРАНИЦА ОПРОСА */
     .question-text { font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; text-align: center; }
     .options-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
     .option-card {
@@ -69,7 +70,7 @@
     }
     .error-msg { color: #ff5252; text-align: center; display: none; margin-top: 10px; }
 
-    /* СТИЛИ СТРАНИЦЫ АДМИНИСТРАТОРА (светлая, как в примере) */
+    /* АДМИН-ПАНЕЛЬ (светлая) */
     .admin-wrapper {
       background: #e8ecf1; min-height: 100vh; display: flex; align-items: center; justify-content: center;
       padding: 20px; width: 100%;
@@ -139,6 +140,9 @@
     }
     .modal-box .btn-primary { width: 100%; margin-top: 15px; }
   </style>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 </head>
 <body>
   <canvas id="particleCanvas"></canvas>
@@ -146,14 +150,14 @@
   <!-- НЕЗАМЕТНАЯ ССЫЛКА АДМИНИСТРАТОРА -->
   <span class="admin-hidden-link" id="adminTrigger" title="Администратор">•</span>
 
-  <!-- ═══════════════ ГЛАВНАЯ СТРАНИЦА ═══════════════ -->
+  <!-- ГЛАВНАЯ СТРАНИЦА -->
   <div class="page active" id="pageMain">
     <h1 style="font-size:3.5rem; font-weight:800; background:linear-gradient(135deg,#00e5ff,#b388ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Информатика</h1>
     <p style="max-width:500px; text-align:center; color:#a0a0b0; margin:16px 0 30px;">Наука о методах сбора, хранения, обработки и передачи информации</p>
     <button class="btn-feedback" id="btnOpenFeedback">Оставить отзыв</button>
   </div>
 
-  <!-- ═══════════════ СТРАНИЦА «РЕФЛЕКСИЯ» (ОПРОС) ═══════════════ -->
+  <!-- СТРАНИЦА «РЕФЛЕКСИЯ» (ОПРОС) -->
   <div class="page" id="pageSurvey">
     <div class="glass-card">
       <h2 style="text-align:center; margin-bottom:10px;">Рефлексия</h2>
@@ -174,7 +178,7 @@
     </div>
   </div>
 
-  <!-- ═══════════════ СТРАНИЦА «СПАСИБО» ═══════════════ -->
+  <!-- СТРАНИЦА «СПАСИБО» -->
   <div class="page" id="pageThanks">
     <div class="glass-card" style="text-align:center;">
       <div style="font-size:4rem;">✅</div>
@@ -184,16 +188,15 @@
     </div>
   </div>
 
-  <!-- ═══════════════ СТРАНИЦА АДМИНИСТРАТОРА (светлая батарейка) ═══════════════ -->
+  <!-- СТРАНИЦА АДМИНИСТРАТОРА (светлая батарейка) -->
   <div class="page" id="pageAdmin">
     <div class="admin-wrapper">
       <div class="reflection-card">
         <div class="header-title">
           <h1>🔋 Рефлексия урока</h1>
-          <p>Статистика ответов (анонимно)</p>
+          <p>Статистика (обновляется мгновенно)</p>
         </div>
 
-        <!-- Карточки с количеством -->
         <div class="stats-panel">
           <div class="stat-card green">
             <span class="stat-icon">✅</span>
@@ -218,7 +221,6 @@
           </div>
         </div>
 
-        <!-- Батарейка -->
         <div class="battery-container">
           <div class="battery-terminal"></div>
           <div class="battery-body" id="batteryBody">
@@ -246,226 +248,251 @@
   </div>
 
   <script>
-    (function() {
-      const STORAGE_KEY = 'informatics_feedback';
-      const ADMIN = { login: 'admin', password: '011290' };
+    // ═══════════════ НАСТРОЙКА FIREBASE ═══════════════
+    // ЗАМЕНИТЕ ЭТИ ДАННЫЕ НА СВОИ
+    const firebaseConfig = {
+      apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      authDomain: "your-project.firebaseapp.com",
+      databaseURL: "https://your-project-default-rtdb.firebaseio.com",
+      projectId: "your-project",
+      storageBucket: "your-project.appspot.com",
+      messagingSenderId: "000000000000",
+      appId: "1:000000000000:web:xxxxxxxxxxxxxxxx"
+    };
+    // Инициализация Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const answersRef = database.ref('answers');
 
-      // Получение всех ответов (только значение)
-      function getAnswers() {
-        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
+    // ═══════════════ ЛОГИКА САЙТА ═══════════════
+    const ADMIN = { login: 'admin', password: '011290' };
+
+    const pages = {
+      main: document.getElementById('pageMain'),
+      survey: document.getElementById('pageSurvey'),
+      thanks: document.getElementById('pageThanks'),
+      admin: document.getElementById('pageAdmin')
+    };
+    const adminModal = document.getElementById('adminModal');
+    const adminTrigger = document.getElementById('adminTrigger');
+    const btnOpenFeedback = document.getElementById('btnOpenFeedback');
+    const btnSubmitSurvey = document.getElementById('btnSubmitSurvey');
+    const btnBackToMain = document.getElementById('btnBackToMain');
+    const btnAdminLogin = document.getElementById('btnAdminLogin');
+    const btnLeaveAdmin = document.getElementById('btnLeaveAdmin');
+    const resetDataBtn = document.getElementById('resetDataBtn');
+    const surveyError = document.getElementById('surveyError');
+    const adminError = document.getElementById('adminError');
+    const adminLoginInput = document.getElementById('adminLogin');
+    const adminPassInput = document.getElementById('adminPass');
+
+    let selectedAnswer = null;
+
+    function showPage(pageName) {
+      Object.values(pages).forEach(p => p.classList.remove('active'));
+      if (pages[pageName]) pages[pageName].classList.add('active');
+      window.scrollTo(0,0);
+    }
+
+    // ── Открытие опроса ──
+    btnOpenFeedback.addEventListener('click', () => {
+      selectedAnswer = null;
+      document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+      surveyError.style.display = 'none';
+      showPage('survey');
+    });
+
+    // Выбор варианта
+    document.getElementById('optionsContainer').addEventListener('click', (e) => {
+      const card = e.target.closest('.option-card');
+      if (!card) return;
+      document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedAnswer = card.dataset.value;
+      surveyError.style.display = 'none';
+    });
+
+    // Отправка ответа в Firebase
+    btnSubmitSurvey.addEventListener('click', () => {
+      if (!selectedAnswer) {
+        surveyError.style.display = 'block';
+        return;
       }
-      function saveAnswer(answer) {
-        const answers = getAnswers();
-        answers.push(answer);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
-      }
-
-      // DOM элементы
-      const pages = {
-        main: document.getElementById('pageMain'),
-        survey: document.getElementById('pageSurvey'),
-        thanks: document.getElementById('pageThanks'),
-        admin: document.getElementById('pageAdmin')
-      };
-      const adminModal = document.getElementById('adminModal');
-      const adminTrigger = document.getElementById('adminTrigger');
-      const btnOpenFeedback = document.getElementById('btnOpenFeedback');
-      const btnSubmitSurvey = document.getElementById('btnSubmitSurvey');
-      const btnBackToMain = document.getElementById('btnBackToMain');
-      const btnAdminLogin = document.getElementById('btnAdminLogin');
-      const btnLeaveAdmin = document.getElementById('btnLeaveAdmin');
-      const resetDataBtn = document.getElementById('resetDataBtn');
-      const surveyError = document.getElementById('surveyError');
-      const adminError = document.getElementById('adminError');
-      const adminLoginInput = document.getElementById('adminLogin');
-      const adminPassInput = document.getElementById('adminPass');
-
-      let selectedAnswer = null;
-
-      // Переключение страниц
-      function showPage(pageName) {
-        Object.values(pages).forEach(p => p.classList.remove('active'));
-        if (pages[pageName]) pages[pageName].classList.add('active');
-        window.scrollTo(0,0);
-      }
-
-      // Открыть опрос (без авторизации)
-      btnOpenFeedback.addEventListener('click', () => {
-        selectedAnswer = null;
-        document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
-        surveyError.style.display = 'none';
-        showPage('survey');
-      });
-
-      // Выбор варианта
-      document.getElementById('optionsContainer').addEventListener('click', (e) => {
-        const card = e.target.closest('.option-card');
-        if (!card) return;
-        document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
-        card.classList.add('selected');
-        selectedAnswer = card.dataset.value;
-        surveyError.style.display = 'none';
-      });
-
-      // Отправка ответа (анонимно)
-      btnSubmitSurvey.addEventListener('click', () => {
-        if (!selectedAnswer) {
-          surveyError.style.display = 'block';
-          return;
-        }
-        saveAnswer(selectedAnswer);
-        showPage('thanks');
-      });
-
-      btnBackToMain.addEventListener('click', () => showPage('main'));
-
-      // Администратор: открытие модального окна
-      adminTrigger.addEventListener('click', () => {
-        if (sessionStorage.getItem('adminLoggedIn') === 'true') {
-          showPage('admin');
-          renderAdminStats();
-        } else {
-          adminModal.classList.add('active');
-          adminLoginInput.value = '';
-          adminPassInput.value = '';
-          adminError.style.display = 'none';
-        }
-      });
-
-      // Закрытие модального окна по Escape
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && adminModal.classList.contains('active')) {
-          adminModal.classList.remove('active');
-        }
-      });
-      adminModal.addEventListener('click', (e) => {
-        if (e.target === adminModal) adminModal.classList.remove('active');
-      });
-
-      btnAdminLogin.addEventListener('click', () => {
-        if (adminLoginInput.value.trim() === ADMIN.login && adminPassInput.value.trim() === ADMIN.password) {
-          adminModal.classList.remove('active');
-          sessionStorage.setItem('adminLoggedIn', 'true');
-          showPage('admin');
-          renderAdminStats();
-        } else {
-          adminError.style.display = 'block';
-        }
-      });
-
-      btnLeaveAdmin.addEventListener('click', () => {
-        sessionStorage.removeItem('adminLoggedIn');
-        showPage('main');
-      });
-
-      // Сброс всех данных
-      resetDataBtn.addEventListener('click', () => {
-        if (confirm('Удалить все ответы?')) {
-          localStorage.removeItem(STORAGE_KEY);
-          renderAdminStats();
-        }
-      });
-
-      // Рендер статистики администратора (без таблицы)
-      function renderAdminStats() {
-        const answers = getAnswers();
-        const counts = {
-          'Всё понял / Всё получилось': 0,
-          'Есть вопросы / Не всё понятно': 0,
-          'Ничего не понял / Было сложно': 0
-        };
-        answers.forEach(a => {
-          if (counts.hasOwnProperty(a)) counts[a]++;
+      answersRef.push(selectedAnswer)
+        .then(() => {
+          showPage('thanks');
+        })
+        .catch(err => {
+          alert('Ошибка отправки: ' + err.message);
         });
+    });
 
-        document.getElementById('countClear').textContent = counts['Всё понял / Всё получилось'];
-        document.getElementById('countQuestions').textContent = counts['Есть вопросы / Не всё понятно'];
-        document.getElementById('countNothing').textContent = counts['Ничего не понял / Было сложно'];
+    btnBackToMain.addEventListener('click', () => showPage('main'));
 
-        // Батарейка: Всё понял = 100, Есть вопросы = 50, Ничего не понял = 0
-        let totalWeight = 0;
-        answers.forEach(a => {
-          if (a === 'Всё понял / Всё получилось') totalWeight += 100;
-          else if (a === 'Есть вопросы / Не всё понятно') totalWeight += 50;
-          else if (a === 'Ничего не понял / Было сложно') totalWeight += 0;
-        });
-        const maxPossible = answers.length * 100;
-        const level = answers.length ? Math.round((totalWeight / maxPossible) * 100) : 0;
-
-        const fill = document.getElementById('batteryFill');
-        const percent = document.getElementById('batteryPercent');
-        fill.style.height = level + '%';
-        percent.textContent = level + '%';
-        // Цвет в зависимости от уровня
-        let color;
-        if (level <= 25) color = '#F44336';
-        else if (level <= 50) color = '#FF9800';
-        else if (level <= 75) color = '#FFC107';
-        else color = '#4CAF50';
-        fill.style.backgroundColor = color;
-      }
-
-      // Фоновая анимация частиц
-      const canvas = document.getElementById('particleCanvas');
-      const ctx = canvas.getContext('2d');
-      let particles = [];
-      const PARTICLE_COUNT = 80;
-      function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-      window.addEventListener('resize', resizeCanvas);
-      resizeCanvas();
-
-      class Particle {
-        constructor() { this.reset(); }
-        reset() {
-          this.x = Math.random() * canvas.width;
-          this.y = Math.random() * canvas.height;
-          this.vx = (Math.random() - 0.5) * 0.5;
-          this.vy = (Math.random() - 0.5) * 0.5;
-          this.radius = Math.random() * 2 + 1;
-        }
-        update() {
-          this.x += this.vx;
-          this.y += this.vy;
-          if (this.x < -10) this.x = canvas.width + 10;
-          if (this.x > canvas.width + 10) this.x = -10;
-          if (this.y < -10) this.y = canvas.height + 10;
-          if (this.y > canvas.height + 10) this.y = -10;
-        }
-        draw(ctx) {
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
-          ctx.fillStyle = 'rgba(0,229,255,0.4)';
-          ctx.fill();
-        }
-      }
-      for (let i=0; i<PARTICLE_COUNT; i++) particles.push(new Particle());
-      function animateParticles() {
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        particles.forEach(p => { p.update(); p.draw(ctx); });
-        for (let i=0; i<particles.length; i++) {
-          for (let j=i+1; j<particles.length; j++) {
-            const dx = particles[i].x - particles[j].x;
-            const dy = particles[i].y - particles[j].y;
-            const dist = Math.sqrt(dx*dx+dy*dy);
-            if (dist < 130) {
-              ctx.beginPath();
-              ctx.moveTo(particles[i].x, particles[i].y);
-              ctx.lineTo(particles[j].x, particles[j].y);
-              ctx.strokeStyle = `rgba(124,77,255,${(1 - dist/130)*0.2})`;
-              ctx.stroke();
-            }
-          }
-        }
-        requestAnimationFrame(animateParticles);
-      }
-      animateParticles();
-
-      // При загрузке проверяем, залогинен ли админ
+    // ── Администратор ──
+    adminTrigger.addEventListener('click', () => {
       if (sessionStorage.getItem('adminLoggedIn') === 'true') {
         showPage('admin');
-        renderAdminStats();
+        startListening(); // начать слушать изменения
+      } else {
+        adminModal.classList.add('active');
+        adminLoginInput.value = '';
+        adminPassInput.value = '';
+        adminError.style.display = 'none';
       }
-    })();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && adminModal.classList.contains('active')) {
+        adminModal.classList.remove('active');
+      }
+    });
+    adminModal.addEventListener('click', (e) => {
+      if (e.target === adminModal) adminModal.classList.remove('active');
+    });
+
+    btnAdminLogin.addEventListener('click', () => {
+      if (adminLoginInput.value.trim() === ADMIN.login && adminPassInput.value.trim() === ADMIN.password) {
+        adminModal.classList.remove('active');
+        sessionStorage.setItem('adminLoggedIn', 'true');
+        showPage('admin');
+        startListening();
+      } else {
+        adminError.style.display = 'block';
+      }
+    });
+
+    btnLeaveAdmin.addEventListener('click', () => {
+      sessionStorage.removeItem('adminLoggedIn');
+      stopListening();
+      showPage('main');
+    });
+
+    // Сброс данных (удаление всех ответов)
+    resetDataBtn.addEventListener('click', () => {
+      if (confirm('Удалить все ответы?')) {
+        answersRef.remove()
+          .then(() => {
+            // слушатель сам обновит интерфейс
+          })
+          .catch(err => alert('Ошибка: ' + err.message));
+      }
+    });
+
+    // ── Обработка данных из Firebase ──
+    function processSnapshot(snapshot) {
+      const answers = [];
+      snapshot.forEach(child => {
+        answers.push(child.val());
+      });
+
+      const counts = {
+        'Всё понял / Всё получилось': 0,
+        'Есть вопросы / Не всё понятно': 0,
+        'Ничего не понял / Было сложно': 0
+      };
+      answers.forEach(a => {
+        if (counts.hasOwnProperty(a)) counts[a]++;
+      });
+
+      document.getElementById('countClear').textContent = counts['Всё понял / Всё получилось'];
+      document.getElementById('countQuestions').textContent = counts['Есть вопросы / Не всё понятно'];
+      document.getElementById('countNothing').textContent = counts['Ничего не понял / Было сложно'];
+
+      // Батарейка
+      let totalWeight = 0;
+      answers.forEach(a => {
+        if (a === 'Всё понял / Всё получилось') totalWeight += 100;
+        else if (a === 'Есть вопросы / Не всё понятно') totalWeight += 50;
+        else if (a === 'Ничего не понял / Было сложно') totalWeight += 0;
+      });
+      const maxPossible = answers.length * 100;
+      const level = answers.length ? Math.round((totalWeight / maxPossible) * 100) : 0;
+
+      const fill = document.getElementById('batteryFill');
+      const percent = document.getElementById('batteryPercent');
+      fill.style.height = level + '%';
+      percent.textContent = level + '%';
+      let color;
+      if (level <= 25) color = '#F44336';
+      else if (level <= 50) color = '#FF9800';
+      else if (level <= 75) color = '#FFC107';
+      else color = '#4CAF50';
+      fill.style.backgroundColor = color;
+    }
+
+    let unsubscribe = null;
+    function startListening() {
+      if (unsubscribe) return;
+      unsubscribe = answersRef.on('value', snapshot => {
+        processSnapshot(snapshot);
+      });
+    }
+    function stopListening() {
+      if (unsubscribe) {
+        answersRef.off('value', unsubscribe);
+        unsubscribe = null;
+      }
+    }
+
+    // ── Фоновая анимация частиц ──
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+    const PARTICLE_COUNT = 80;
+    function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    class Particle {
+      constructor() { this.reset(); }
+      reset() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.vy = (Math.random() - 0.5) * 0.5;
+        this.radius = Math.random() * 2 + 1;
+      }
+      update() {
+        this.x += this.vx; this.y += this.vy;
+        if (this.x < -10) this.x = canvas.width + 10;
+        if (this.x > canvas.width + 10) this.x = -10;
+        if (this.y < -10) this.y = canvas.height + 10;
+        if (this.y > canvas.height + 10) this.y = -10;
+      }
+      draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(0,229,255,0.4)';
+        ctx.fill();
+      }
+    }
+    for (let i=0; i<PARTICLE_COUNT; i++) particles.push(new Particle());
+    function animateParticles() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      particles.forEach(p => { p.update(); p.draw(ctx); });
+      for (let i=0; i<particles.length; i++) {
+        for (let j=i+1; j<particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx*dx+dy*dy);
+          if (dist < 130) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(124,77,255,${(1 - dist/130)*0.2})`;
+            ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    // Авто-вход администратора при загрузке
+    if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+      showPage('admin');
+      startListening();
+    }
   </script>
 </body>
 </html>
