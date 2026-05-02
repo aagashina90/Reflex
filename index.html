@@ -4,12 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Информатика – Рефлексия</title>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <style>
-    /* Стили оставлены те же, что и в предыдущем ответе */
+    :root {
+      --bg-dark: #0a0e14;
+      --glass: rgba(20, 24, 35, 0.75);
+      --accent: #00e5ff;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
-      background: #0a0e14;
+      background: var(--bg-dark);
       color: #e0e0e0;
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
@@ -25,9 +32,9 @@
     .page.active { display: flex; animation: fadeIn 0.4s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     .glass-card {
-      background: rgba(20, 24, 35, 0.75); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      background: var(--glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
       border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 36px 32px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-width: 480px; width: 100%; transition: all 0.3s;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-width: 480px; width: 100%;
     }
     .btn-primary {
       display: inline-block; padding: 16px 40px; border: none; border-radius: 50px;
@@ -48,8 +55,6 @@
       color: rgba(255,255,255,0.12); text-decoration: none; cursor: pointer; user-select: none;
     }
     .admin-hidden-link:hover { color: rgba(255,255,255,0.5); }
-
-    /* СТРАНИЦА ОПРОСА */
     .question-text { font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; text-align: center; }
     .options-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
     .option-card {
@@ -58,22 +63,21 @@
       cursor: pointer; transition: 0.25s; font-weight: 500; font-size: 1.05rem;
     }
     .option-card:hover, .option-card.selected {
-      border-color: #00e5ff; background: rgba(0,229,255,0.12); box-shadow: 0 0 25px rgba(0,229,255,0.2);
+      border-color: var(--accent); background: rgba(0,229,255,0.12);
+      box-shadow: 0 0 25px rgba(0,229,255,0.2);
     }
     .option-radio {
       width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4);
       display: flex; align-items: center; justify-content: center;
     }
-    .option-card.selected .option-radio { border-color: #00e5ff; background: #00e5ff; }
+    .option-card.selected .option-radio { border-color: var(--accent); background: var(--accent); }
     .option-card.selected .option-radio::after {
       content: ''; width: 10px; height: 10px; border-radius: 50%; background: #0a0e14;
     }
     .error-msg { color: #ff5252; text-align: center; display: none; margin-top: 10px; }
-
-    /* АДМИН-ПАНЕЛЬ (светлая) */
     .admin-wrapper {
-      background: #e8ecf1; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      padding: 20px; width: 100%;
+      background: #e8ecf1; min-height: 100vh; display: flex; align-items: center;
+      justify-content: center; padding: 20px; width: 100%;
     }
     .reflection-card {
       background: #ffffff; border-radius: 32px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
@@ -85,8 +89,9 @@
     .header-title p { color: #5a5d66; margin-top: 4px; }
     .stats-panel { display: flex; gap: 18px; flex-wrap: wrap; width: 100%; justify-content: center; }
     .stat-card {
-      background: #fff; border-radius: 18px; padding: 22px 28px; display: flex; align-items: center;
-      gap: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.06); min-width: 180px; flex: 1 1 180px;
+      background: #fff; border-radius: 18px; padding: 22px 28px; display: flex;
+      align-items: center; gap: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+      min-width: 180px; flex: 1 1 180px;
     }
     .stat-card.green { border-left: 6px solid #4CAF50; }
     .stat-card.orange { border-left: 6px solid #FF9800; }
@@ -130,24 +135,25 @@
     }
     .modal-overlay.active { display: flex; }
     .modal-box {
-      background: #1e2230; border-radius: 20px; padding: 30px; width: 90%; max-width: 380px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      background: #1e2230; border-radius: 20px; padding: 30px; width: 90%;
+      max-width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.6);
     }
     .modal-box h3 { color: #fff; text-align: center; margin-bottom: 20px; }
     .modal-box input {
-      width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: 1px solid #333;
-      background: rgba(255,255,255,0.05); color: #fff; outline: none;
+      width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px;
+      border: 1px solid #333; background: rgba(255,255,255,0.05); color: #fff; outline: none;
     }
     .modal-box .btn-primary { width: 100%; margin-top: 15px; }
+    @media (max-width: 640px) {
+      .battery-body { width: 100px; height: 200px; }
+      .reflection-card { padding: 20px; }
+    }
   </style>
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 </head>
 <body>
   <canvas id="particleCanvas"></canvas>
 
-  <!-- НЕЗАМЕТНАЯ ССЫЛКА АДМИНИСТРАТОРА -->
+  <!-- Ссылка для входа администратора (точка) -->
   <span class="admin-hidden-link" id="adminTrigger" title="Администратор">•</span>
 
   <!-- ГЛАВНАЯ СТРАНИЦА -->
@@ -157,7 +163,7 @@
     <button class="btn-feedback" id="btnOpenFeedback">Оставить отзыв</button>
   </div>
 
-  <!-- СТРАНИЦА «РЕФЛЕКСИЯ» (ОПРОС) -->
+  <!-- СТРАНИЦА ОПРОСА (РЕФЛЕКСИЯ) -->
   <div class="page" id="pageSurvey">
     <div class="glass-card">
       <h2 style="text-align:center; margin-bottom:10px;">Рефлексия</h2>
@@ -178,7 +184,7 @@
     </div>
   </div>
 
-  <!-- СТРАНИЦА «СПАСИБО» -->
+  <!-- СТРАНИЦА СПАСИБО -->
   <div class="page" id="pageThanks">
     <div class="glass-card" style="text-align:center;">
       <div style="font-size:4rem;">✅</div>
@@ -188,15 +194,14 @@
     </div>
   </div>
 
-  <!-- СТРАНИЦА АДМИНИСТРАТОРА (светлая батарейка) -->
+  <!-- АДМИНИСТРАТИВНАЯ ПАНЕЛЬ -->
   <div class="page" id="pageAdmin">
     <div class="admin-wrapper">
       <div class="reflection-card">
         <div class="header-title">
           <h1>🔋 Рефлексия урока</h1>
-          <p>Статистика (обновляется мгновенно)</p>
+          <p>Статистика ответов (обновляется в реальном времени)</p>
         </div>
-
         <div class="stats-panel">
           <div class="stat-card green">
             <span class="stat-icon">✅</span>
@@ -220,7 +225,6 @@
             </div>
           </div>
         </div>
-
         <div class="battery-container">
           <div class="battery-terminal"></div>
           <div class="battery-body" id="batteryBody">
@@ -229,7 +233,7 @@
             </div>
             <div class="battery-percent" id="batteryPercent">0%</div>
           </div>
-          <button class="reset-btn" id="resetDataBtn" title="Сбросить все ответы">↻</button>
+          <button class="reset-btn" id="resetDataBtn" title="Удалить все ответы">↻</button>
         </div>
       </div>
     </div>
@@ -248,26 +252,23 @@
   </div>
 
   <script>
-    // ═══════════════ НАСТРОЙКА FIREBASE ═══════════════
-    // ЗАМЕНИТЕ ЭТИ ДАННЫЕ НА СВОИ
-   // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+    // ════════════ ВАШ КОНФИГ FIREBASE ════════════
+    const firebaseConfig = {
+      apiKey: "AIzaSyAgWXWYlpESoxYl-mYu_pW5jAU9EpHm0Kw",
+      authDomain: "informatics-reflex.firebaseapp.com",
+      databaseURL: "https://informatics-reflex-default-rtdb.firebaseio.com",
+      projectId: "informatics-reflex",
+      storageBucket: "informatics-reflex.firebasestorage.app",
+      messagingSenderId: "222008361888",
+      appId: "1:222008361888:web:c0edc0096bfe3a33f35ac5"
+    };
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAgWXWYlpESoxYl-mYu_pW5jAU9EpHm0Kw",
-  authDomain: "informatics-reflex.firebaseapp.com",
-  projectId: "informatics-reflex",
-  storageBucket: "informatics-reflex.firebasestorage.app",
-  messagingSenderId: "222008361888",
-  appId: "1:222008361888:web:c0edc0096bfe3a33f35ac5"
-};
+    // Инициализация Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const answersRef = database.ref('answers');
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-    // ═══════════════ ЛОГИКА САЙТА ═══════════════
+    // ════════════ ЛОГИКА САЙТА ════════════
     const ADMIN = { login: 'admin', password: '011290' };
 
     const pages = {
@@ -290,6 +291,7 @@ const app = initializeApp(firebaseConfig);
     const adminPassInput = document.getElementById('adminPass');
 
     let selectedAnswer = null;
+    let unsubscribe = null;
 
     function showPage(pageName) {
       Object.values(pages).forEach(p => p.classList.remove('active'));
@@ -297,7 +299,7 @@ const app = initializeApp(firebaseConfig);
       window.scrollTo(0,0);
     }
 
-    // ── Открытие опроса ──
+    // Открыть опрос
     btnOpenFeedback.addEventListener('click', () => {
       selectedAnswer = null;
       document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
@@ -315,7 +317,7 @@ const app = initializeApp(firebaseConfig);
       surveyError.style.display = 'none';
     });
 
-    // Отправка ответа в Firebase
+    // Отправить ответ в Firebase
     btnSubmitSurvey.addEventListener('click', () => {
       if (!selectedAnswer) {
         surveyError.style.display = 'block';
@@ -332,11 +334,11 @@ const app = initializeApp(firebaseConfig);
 
     btnBackToMain.addEventListener('click', () => showPage('main'));
 
-    // ── Администратор ──
+    // ── АДМИНИСТРИРОВАНИЕ ──
     adminTrigger.addEventListener('click', () => {
       if (sessionStorage.getItem('adminLoggedIn') === 'true') {
         showPage('admin');
-        startListening(); // начать слушать изменения
+        startListening();
       } else {
         adminModal.classList.add('active');
         adminLoginInput.value = '';
@@ -371,18 +373,16 @@ const app = initializeApp(firebaseConfig);
       showPage('main');
     });
 
-    // Сброс данных (удаление всех ответов)
+    // Сброс всех ответов
     resetDataBtn.addEventListener('click', () => {
       if (confirm('Удалить все ответы?')) {
         answersRef.remove()
-          .then(() => {
-            // слушатель сам обновит интерфейс
-          })
+          .then(() => { /* слушатель сам обновит интерфейс */ })
           .catch(err => alert('Ошибка: ' + err.message));
       }
     });
 
-    // ── Обработка данных из Firebase ──
+    // Обработка данных из Firebase
     function processSnapshot(snapshot) {
       const answers = [];
       snapshot.forEach(child => {
@@ -424,7 +424,6 @@ const app = initializeApp(firebaseConfig);
       fill.style.backgroundColor = color;
     }
 
-    let unsubscribe = null;
     function startListening() {
       if (unsubscribe) return;
       unsubscribe = answersRef.on('value', snapshot => {
@@ -438,7 +437,7 @@ const app = initializeApp(firebaseConfig);
       }
     }
 
-    // ── Фоновая анимация частиц ──
+    // Фоновая анимация (частицы)
     const canvas = document.getElementById('particleCanvas');
     const ctx = canvas.getContext('2d');
     let particles = [];
@@ -491,7 +490,7 @@ const app = initializeApp(firebaseConfig);
     }
     animateParticles();
 
-    // Авто-вход администратора при загрузке
+    // Авто-вход администратора при обновлении страницы
     if (sessionStorage.getItem('adminLoggedIn') === 'true') {
       showPage('admin');
       startListening();
