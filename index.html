@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Информатика – Рефлексия</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+      background: #0a0e14;
+      color: #e0e0e0;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    #particleCanvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none;
+    }
+    .page {
+      position: relative; z-index: 1; display: none; flex-direction: column;
+      align-items: center; justify-content: center; min-height: 100vh; padding: 40px 20px;
+    }
+    .page.active { display: flex; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .glass-card {
+      background: rgba(20, 24, 35, 0.75); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 36px 32px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-width: 480px; width: 100%; transition: all 0.3s;
+    }
+    .btn-primary {
+      display: inline-block; padding: 16px 40px; border: none; border-radius: 50px;
+      background: linear-gradient(135deg, #00e5ff, #00b8d4); color: #0a0e14;
+      font-weight: 700; font-size: 1rem; letter-spacing: 0.5px; cursor: pointer;
+      text-transform: uppercase; transition: 0.3s; box-shadow: 0 6px 25px rgba(0,229,255,0.3);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 35px rgba(0,229,255,0.5); }
+    .btn-primary:active { transform: scale(0.96); }
+    .btn-feedback {
+      margin-top: 30px; padding: 18px 48px; font-size: 1.2rem; letter-spacing: 1px;
+      animation: pulse 2.5s infinite; background: linear-gradient(135deg, #00e5ff, #00b8d4);
+      color: #0a0e14; border: none; border-radius: 60px; cursor: pointer; font-weight: 800;
+    }
+    @keyframes pulse { 0%,100%{ box-shadow: 0 0 20px rgba(0,229,255,0.3); } 50%{ box-shadow: 0 0 45px rgba(0,229,255,0.7); } }
+    .admin-hidden-link {
+      position: fixed; top: 16px; right: 22px; z-index: 100; font-size: 20px;
+      color: rgba(255,255,255,0.12); text-decoration: none; cursor: pointer; user-select: none;
+    }
+    .admin-hidden-link:hover { color: rgba(255,255,255,0.5); }
+
+    /* СТРАНИЦА ОПРОСА (РЕФЛЕКСИЯ) */
+    .question-text { font-size: 1.3rem; font-weight: 600; margin-bottom: 20px; text-align: center; }
+    .options-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+    .option-card {
+      display: flex; align-items: center; gap: 14px; padding: 16px 22px; border-radius: 16px;
+      border: 2px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.04);
+      cursor: pointer; transition: 0.25s; font-weight: 500; font-size: 1.05rem;
+    }
+    .option-card:hover, .option-card.selected {
+      border-color: #00e5ff; background: rgba(0,229,255,0.12); box-shadow: 0 0 25px rgba(0,229,255,0.2);
+    }
+    .option-radio {
+      width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .option-card.selected .option-radio { border-color: #00e5ff; background: #00e5ff; }
+    .option-card.selected .option-radio::after {
+      content: ''; width: 10px; height: 10px; border-radius: 50%; background: #0a0e14;
+    }
+    .error-msg { color: #ff5252; text-align: center; display: none; margin-top: 10px; }
+
+    /* СТИЛИ СТРАНИЦЫ АДМИНИСТРАТОРА (светлая, как в примере) */
+    .admin-wrapper {
+      background: #e8ecf1; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 20px; width: 100%;
+    }
+    .reflection-card {
+      background: #ffffff; border-radius: 32px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+      padding: 44px 40px; max-width: 900px; width: 100%; display: flex; flex-wrap: wrap;
+      gap: 40px; align-items: center; justify-content: center;
+    }
+    .header-title { text-align: center; width: 100%; }
+    .header-title h1 { font-size: 2.2rem; color: #1a1d26; font-weight: 700; }
+    .header-title p { color: #5a5d66; margin-top: 4px; }
+    .stats-panel { display: flex; gap: 18px; flex-wrap: wrap; width: 100%; justify-content: center; }
+    .stat-card {
+      background: #fff; border-radius: 18px; padding: 22px 28px; display: flex; align-items: center;
+      gap: 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.06); min-width: 180px; flex: 1 1 180px;
+    }
+    .stat-card.green { border-left: 6px solid #4CAF50; }
+    .stat-card.orange { border-left: 6px solid #FF9800; }
+    .stat-card.red { border-left: 6px solid #F44336; }
+    .stat-card .stat-icon { font-size: 2rem; }
+    .stat-card .stat-info .stat-count { font-size: 2rem; font-weight: 800; color: #1a1d26; }
+    .stat-card .stat-info .stat-label { color: #5a5d66; font-weight: 500; font-size: 0.9rem; }
+    .battery-container { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .battery-terminal {
+      width: 48px; height: 14px; background: linear-gradient(180deg, #c0c4cc, #8a8d94);
+      border-radius: 6px 6px 0 0; border: 2px solid #5a5d64; border-bottom: none;
+    }
+    .battery-body {
+      width: 140px; height: 280px; background: #1a1d23; border: 5px solid #3a3d44;
+      border-radius: 24px; position: relative; overflow: hidden;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.6), 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .battery-inner {
+      position: absolute; bottom: 8px; left: 8px; right: 8px; top: 8px;
+      background: #12141a; border-radius: 14px; overflow: hidden;
+    }
+    .battery-fill {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 0%;
+      background: #4CAF50; border-radius: 10px 10px 4px 4px;
+      transition: height 0.7s ease, background-color 0.7s ease;
+    }
+    .battery-percent {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 2.8rem; font-weight: 800; color: #fff; z-index: 5;
+      text-shadow: 0 0 20px rgba(0,0,0,0.8);
+    }
+    .reset-btn {
+      width: 44px; height: 44px; border-radius: 50%; border: 2px solid #d0d4da;
+      background: #fff; font-size: 1.4rem; cursor: pointer; transition: 0.3s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .reset-btn:hover { transform: rotate(45deg); background: #f5f5f5; }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none;
+      align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(6px);
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: #1e2230; border-radius: 20px; padding: 30px; width: 90%; max-width: 380px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    }
+    .modal-box h3 { color: #fff; text-align: center; margin-bottom: 20px; }
+    .modal-box input {
+      width: 100%; padding: 14px; margin: 8px 0; border-radius: 12px; border: 1px solid #333;
+      background: rgba(255,255,255,0.05); color: #fff; outline: none;
+    }
+    .modal-box .btn-primary { width: 100%; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <canvas id="particleCanvas"></canvas>
+
+  <!-- НЕЗАМЕТНАЯ ССЫЛКА АДМИНИСТРАТОРА -->
+  <span class="admin-hidden-link" id="adminTrigger" title="Администратор">•</span>
+
+  <!-- ═══════════════ ГЛАВНАЯ СТРАНИЦА ═══════════════ -->
+  <div class="page active" id="pageMain">
+    <h1 style="font-size:3.5rem; font-weight:800; background:linear-gradient(135deg,#00e5ff,#b388ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Информатика</h1>
+    <p style="max-width:500px; text-align:center; color:#a0a0b0; margin:16px 0 30px;">Наука о методах сбора, хранения, обработки и передачи информации</p>
+    <button class="btn-feedback" id="btnOpenFeedback">Оставить отзыв</button>
+  </div>
+
+  <!-- ═══════════════ СТРАНИЦА «РЕФЛЕКСИЯ» (ОПРОС) ═══════════════ -->
+  <div class="page" id="pageSurvey">
+    <div class="glass-card">
+      <h2 style="text-align:center; margin-bottom:10px;">Рефлексия</h2>
+      <p class="question-text">Понравился ли Вам урок?</p>
+      <div class="options-grid" id="optionsContainer">
+        <div class="option-card" data-value="Всё понял / Всё получилось">
+          <div class="option-radio"></div> Всё понял / Всё получилось
+        </div>
+        <div class="option-card" data-value="Есть вопросы / Не всё понятно">
+          <div class="option-radio"></div> Есть вопросы / Не всё понятно
+        </div>
+        <div class="option-card" data-value="Ничего не понял / Было сложно">
+          <div class="option-radio"></div> Ничего не понял / Было сложно
+        </div>
+      </div>
+      <p class="error-msg" id="surveyError">Выберите один вариант</p>
+      <button class="btn-primary" id="btnSubmitSurvey" style="width:100%;">Отправить</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ СТРАНИЦА «СПАСИБО» ═══════════════ -->
+  <div class="page" id="pageThanks">
+    <div class="glass-card" style="text-align:center;">
+      <div style="font-size:4rem;">✅</div>
+      <h2>Спасибо!</h2>
+      <p style="color:#a0a0b0; margin:12px 0 24px;">Ваш отзыв сохранён.</p>
+      <button class="btn-primary" id="btnBackToMain">На главную</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ СТРАНИЦА АДМИНИСТРАТОРА (светлая батарейка) ═══════════════ -->
+  <div class="page" id="pageAdmin">
+    <div class="admin-wrapper">
+      <div class="reflection-card">
+        <div class="header-title">
+          <h1>🔋 Рефлексия урока</h1>
+          <p>Статистика ответов (анонимно)</p>
+        </div>
+
+        <!-- Карточки с количеством -->
+        <div class="stats-panel">
+          <div class="stat-card green">
+            <span class="stat-icon">✅</span>
+            <div class="stat-info">
+              <div class="stat-count" id="countClear">0</div>
+              <div class="stat-label">Всё понял</div>
+            </div>
+          </div>
+          <div class="stat-card orange">
+            <span class="stat-icon">🤔</span>
+            <div class="stat-info">
+              <div class="stat-count" id="countQuestions">0</div>
+              <div class="stat-label">Есть вопросы</div>
+            </div>
+          </div>
+          <div class="stat-card red">
+            <span class="stat-icon">😟</span>
+            <div class="stat-info">
+              <div class="stat-count" id="countNothing">0</div>
+              <div class="stat-label">Ничего не понял</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Батарейка -->
+        <div class="battery-container">
+          <div class="battery-terminal"></div>
+          <div class="battery-body" id="batteryBody">
+            <div class="battery-inner">
+              <div class="battery-fill" id="batteryFill"></div>
+            </div>
+            <div class="battery-percent" id="batteryPercent">0%</div>
+          </div>
+          <button class="reset-btn" id="resetDataBtn" title="Сбросить все ответы">↻</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary" id="btnLeaveAdmin" style="margin-top:20px;">Выйти из панели</button>
+  </div>
+
+  <!-- МОДАЛЬНОЕ ОКНО ВХОДА АДМИНИСТРАТОРА -->
+  <div class="modal-overlay" id="adminModal">
+    <div class="modal-box">
+      <h3>🔐 Вход для администратора</h3>
+      <input type="text" id="adminLogin" placeholder="Логин">
+      <input type="password" id="adminPass" placeholder="Пароль">
+      <p class="error-msg" id="adminError" style="margin-top:8px;">Неверный логин или пароль</p>
+      <button class="btn-primary" id="btnAdminLogin">Войти</button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const STORAGE_KEY = 'informatics_feedback';
+      const ADMIN = { login: 'admin', password: '011290' };
+
+      // Получение всех ответов (только значение)
+      function getAnswers() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
+      }
+      function saveAnswer(answer) {
+        const answers = getAnswers();
+        answers.push(answer);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
+      }
+
+      // DOM элементы
+      const pages = {
+        main: document.getElementById('pageMain'),
+        survey: document.getElementById('pageSurvey'),
+        thanks: document.getElementById('pageThanks'),
+        admin: document.getElementById('pageAdmin')
+      };
+      const adminModal = document.getElementById('adminModal');
+      const adminTrigger = document.getElementById('adminTrigger');
+      const btnOpenFeedback = document.getElementById('btnOpenFeedback');
+      const btnSubmitSurvey = document.getElementById('btnSubmitSurvey');
+      const btnBackToMain = document.getElementById('btnBackToMain');
+      const btnAdminLogin = document.getElementById('btnAdminLogin');
+      const btnLeaveAdmin = document.getElementById('btnLeaveAdmin');
+      const resetDataBtn = document.getElementById('resetDataBtn');
+      const surveyError = document.getElementById('surveyError');
+      const adminError = document.getElementById('adminError');
+      const adminLoginInput = document.getElementById('adminLogin');
+      const adminPassInput = document.getElementById('adminPass');
+
+      let selectedAnswer = null;
+
+      // Переключение страниц
+      function showPage(pageName) {
+        Object.values(pages).forEach(p => p.classList.remove('active'));
+        if (pages[pageName]) pages[pageName].classList.add('active');
+        window.scrollTo(0,0);
+      }
+
+      // Открыть опрос (без авторизации)
+      btnOpenFeedback.addEventListener('click', () => {
+        selectedAnswer = null;
+        document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+        surveyError.style.display = 'none';
+        showPage('survey');
+      });
+
+      // Выбор варианта
+      document.getElementById('optionsContainer').addEventListener('click', (e) => {
+        const card = e.target.closest('.option-card');
+        if (!card) return;
+        document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        selectedAnswer = card.dataset.value;
+        surveyError.style.display = 'none';
+      });
+
+      // Отправка ответа (анонимно)
+      btnSubmitSurvey.addEventListener('click', () => {
+        if (!selectedAnswer) {
+          surveyError.style.display = 'block';
+          return;
+        }
+        saveAnswer(selectedAnswer);
+        showPage('thanks');
+      });
+
+      btnBackToMain.addEventListener('click', () => showPage('main'));
+
+      // Администратор: открытие модального окна
+      adminTrigger.addEventListener('click', () => {
+        if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+          showPage('admin');
+          renderAdminStats();
+        } else {
+          adminModal.classList.add('active');
+          adminLoginInput.value = '';
+          adminPassInput.value = '';
+          adminError.style.display = 'none';
+        }
+      });
+
+      // Закрытие модального окна по Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && adminModal.classList.contains('active')) {
+          adminModal.classList.remove('active');
+        }
+      });
+      adminModal.addEventListener('click', (e) => {
+        if (e.target === adminModal) adminModal.classList.remove('active');
+      });
+
+      btnAdminLogin.addEventListener('click', () => {
+        if (adminLoginInput.value.trim() === ADMIN.login && adminPassInput.value.trim() === ADMIN.password) {
+          adminModal.classList.remove('active');
+          sessionStorage.setItem('adminLoggedIn', 'true');
+          showPage('admin');
+          renderAdminStats();
+        } else {
+          adminError.style.display = 'block';
+        }
+      });
+
+      btnLeaveAdmin.addEventListener('click', () => {
+        sessionStorage.removeItem('adminLoggedIn');
+        showPage('main');
+      });
+
+      // Сброс всех данных
+      resetDataBtn.addEventListener('click', () => {
+        if (confirm('Удалить все ответы?')) {
+          localStorage.removeItem(STORAGE_KEY);
+          renderAdminStats();
+        }
+      });
+
+      // Рендер статистики администратора (без таблицы)
+      function renderAdminStats() {
+        const answers = getAnswers();
+        const counts = {
+          'Всё понял / Всё получилось': 0,
+          'Есть вопросы / Не всё понятно': 0,
+          'Ничего не понял / Было сложно': 0
+        };
+        answers.forEach(a => {
+          if (counts.hasOwnProperty(a)) counts[a]++;
+        });
+
+        document.getElementById('countClear').textContent = counts['Всё понял / Всё получилось'];
+        document.getElementById('countQuestions').textContent = counts['Есть вопросы / Не всё понятно'];
+        document.getElementById('countNothing').textContent = counts['Ничего не понял / Было сложно'];
+
+        // Батарейка: Всё понял = 100, Есть вопросы = 50, Ничего не понял = 0
+        let totalWeight = 0;
+        answers.forEach(a => {
+          if (a === 'Всё понял / Всё получилось') totalWeight += 100;
+          else if (a === 'Есть вопросы / Не всё понятно') totalWeight += 50;
+          else if (a === 'Ничего не понял / Было сложно') totalWeight += 0;
+        });
+        const maxPossible = answers.length * 100;
+        const level = answers.length ? Math.round((totalWeight / maxPossible) * 100) : 0;
+
+        const fill = document.getElementById('batteryFill');
+        const percent = document.getElementById('batteryPercent');
+        fill.style.height = level + '%';
+        percent.textContent = level + '%';
+        // Цвет в зависимости от уровня
+        let color;
+        if (level <= 25) color = '#F44336';
+        else if (level <= 50) color = '#FF9800';
+        else if (level <= 75) color = '#FFC107';
+        else color = '#4CAF50';
+        fill.style.backgroundColor = color;
+      }
+
+      // Фоновая анимация частиц
+      const canvas = document.getElementById('particleCanvas');
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      const PARTICLE_COUNT = 80;
+      function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      class Particle {
+        constructor() { this.reset(); }
+        reset() {
+          this.x = Math.random() * canvas.width;
+          this.y = Math.random() * canvas.height;
+          this.vx = (Math.random() - 0.5) * 0.5;
+          this.vy = (Math.random() - 0.5) * 0.5;
+          this.radius = Math.random() * 2 + 1;
+        }
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          if (this.x < -10) this.x = canvas.width + 10;
+          if (this.x > canvas.width + 10) this.x = -10;
+          if (this.y < -10) this.y = canvas.height + 10;
+          if (this.y > canvas.height + 10) this.y = -10;
+        }
+        draw(ctx) {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+          ctx.fillStyle = 'rgba(0,229,255,0.4)';
+          ctx.fill();
+        }
+      }
+      for (let i=0; i<PARTICLE_COUNT; i++) particles.push(new Particle());
+      function animateParticles() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        particles.forEach(p => { p.update(); p.draw(ctx); });
+        for (let i=0; i<particles.length; i++) {
+          for (let j=i+1; j<particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx*dx+dy*dy);
+            if (dist < 130) {
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.strokeStyle = `rgba(124,77,255,${(1 - dist/130)*0.2})`;
+              ctx.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(animateParticles);
+      }
+      animateParticles();
+
+      // При загрузке проверяем, залогинен ли админ
+      if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+        showPage('admin');
+        renderAdminStats();
+      }
+    })();
+  </script>
+</body>
+</html>
