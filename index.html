@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Информатика – Рефлексия</title>
-  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <style>
@@ -56,8 +55,6 @@
 </head>
 <body>
   <canvas id="particleCanvas"></canvas>
-
-  <!-- Неприметная ссылка администратора -->
   <span class="admin-hidden-link" id="adminTrigger" title="Администратор">•</span>
 
   <!-- ГЛАВНАЯ -->
@@ -160,7 +157,6 @@
     const database = firebase.database();
     const answersRef = database.ref('answers');
 
-    // ───── ОСНОВНАЯ ЛОГИКА ─────
     const ADMIN = { login:'admin', password:'011290' };
     const pages = {
       main: document.getElementById('pageMain'),
@@ -169,6 +165,7 @@
       admin: document.getElementById('pageAdmin')
     };
     let selectedAnswer = null;
+    // Переменная хранит функцию отписки от слушателя
     let unsubscribe = null;
 
     function showPage(name) {
@@ -176,15 +173,13 @@
       if (pages[name]) pages[name].classList.add('active');
     }
 
-    // Кнопка "Оставить отзыв"
+    // ── ОПРОС ──
     document.getElementById('btnOpenFeedback').onclick = () => {
       selectedAnswer = null;
       document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
       document.getElementById('surveyError').style.display = 'none';
       showPage('survey');
     };
-
-    // Выбор варианта
     document.getElementById('optionsContainer').onclick = (e) => {
       const card = e.target.closest('.option-card');
       if (!card) return;
@@ -192,8 +187,6 @@
       card.classList.add('selected');
       selectedAnswer = card.dataset.value;
     };
-
-    // Отправить ответ
     document.getElementById('btnSubmitSurvey').onclick = () => {
       if (!selectedAnswer) {
         document.getElementById('surveyError').style.display = 'block';
@@ -203,64 +196,30 @@
         .then(() => showPage('thanks'))
         .catch(err => alert('Ошибка: ' + err.message));
     };
-
     document.getElementById('btnBackToMain').onclick = () => showPage('main');
 
-    // Администратор: открыть модалку или страницу
-    document.getElementById('adminTrigger').onclick = () => {
-      if (sessionStorage.getItem('adminLoggedIn') === 'true') {
-        showPage('admin');
-        // Запускаем слушатель (если ещё не запущен)
-        if (!unsubscribe) startListening();
-      } else {
-        document.getElementById('adminModal').classList.add('active');
+    // ── АДМИН ──
+    function openAdmin() {
+      showPage('admin');
+      // Всегда пересоздаём слушатель, чтобы гарантировать актуальность
+      if (unsubscribe) {
+        answersRef.off('value', unsubscribe);
+        unsubscribe = null;
       }
-    };
+      subscribeToAnswers();
+    }
 
-    // Вход
-    document.getElementById('btnAdminLogin').onclick = () => {
-      const login = document.getElementById('adminLogin').value.trim();
-      const pass = document.getElementById('adminPass').value.trim();
-      if (login === ADMIN.login && pass === ADMIN.password) {
-        sessionStorage.setItem('adminLoggedIn', 'true');
-        document.getElementById('adminModal').classList.remove('active');
-        showPage('admin');
-        if (!unsubscribe) startListening();
-      } else {
-        document.getElementById('adminError').style.display = 'block';
-      }
-    };
+    function subscribeToAnswers() {
+      // Запускаем слушатель
+      unsubscribe = answersRef.on('value', (snapshot) => {
+        const answers = [];
+        snapshot.forEach(child => answers.push(child.val()));
+        updateStats(answers);
+      });
+      console.log('Слушатель запущен');
+    }
 
-    // Выход
-    document.getElementById('btnLeaveAdmin').onclick = () => {
-      sessionStorage.removeItem('adminLoggedIn');
-      stopListening();
-      showPage('main');
-    };
-
-    // Закрытие модалки по Escape и клику вне
-    window.onkeydown = (e) => {
-      if (e.key === 'Escape') document.getElementById('adminModal').classList.remove('active');
-    };
-    document.getElementById('adminModal').onclick = (e) => {
-      if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
-    };
-
-    // Сброс всех ответов
-    document.getElementById('resetDataBtn').onclick = () => {
-      if (confirm('Удалить все ответы?')) {
-        answersRef.remove()
-          .then(() => console.log('Все ответы удалены'))
-          .catch(err => alert('Ошибка при удалении: ' + err.message));
-      }
-    };
-
-    // ───── ОБРАБОТКА ДАННЫХ ─────
-    function processSnapshot(snapshot) {
-      const answers = [];
-      snapshot.forEach(child => answers.push(child.val()));
-
-      // Подсчёт по категориям
+    function updateStats(answers) {
       const counts = {
         'Всё понял / Всё получилось': 0,
         'Есть вопросы / Не всё понятно': 0,
@@ -273,41 +232,71 @@
       document.getElementById('countNothing').textContent = counts['Ничего не понял / Было сложно'];
       document.getElementById('totalAnswers').textContent = answers.length;
 
-      // Расчёт уровня заряда (относительно числа ответов)
       let totalWeight = 0;
       answers.forEach(a => {
         if (a === 'Всё понял / Всё получилось') totalWeight += 100;
         else if (a === 'Есть вопросы / Не всё понятно') totalWeight += 50;
-        // Ничего не понял – 0 баллов
       });
       const level = answers.length > 0 ? Math.round((totalWeight / (answers.length * 100)) * 100) : 0;
-
       const fill = document.getElementById('batteryFill');
       fill.style.height = level + '%';
       document.getElementById('batteryPercent').textContent = level + '%';
-      // Цвет: красный → оранжевый → жёлтый → зелёный
       fill.style.backgroundColor = level <= 25 ? '#F44336' : level <= 50 ? '#FF9800' : level <= 75 ? '#FFC107' : '#4CAF50';
+      console.log('Статистика обновлена:', counts, 'Заряд:', level);
     }
 
-    function startListening() {
-      if (unsubscribe) return; // уже слушаем
-      unsubscribe = answersRef.on('value', processSnapshot);
-    }
+    // Вход / выход
+    document.getElementById('adminTrigger').onclick = () => {
+      if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+        openAdmin();
+      } else {
+        document.getElementById('adminModal').classList.add('active');
+      }
+    };
 
-    function stopListening() {
+    document.getElementById('btnAdminLogin').onclick = () => {
+      const login = document.getElementById('adminLogin').value.trim();
+      const pass = document.getElementById('adminPass').value.trim();
+      if (login === ADMIN.login && pass === ADMIN.password) {
+        sessionStorage.setItem('adminLoggedIn', 'true');
+        document.getElementById('adminModal').classList.remove('active');
+        openAdmin();
+      } else {
+        document.getElementById('adminError').style.display = 'block';
+      }
+    };
+
+    document.getElementById('btnLeaveAdmin').onclick = () => {
+      sessionStorage.removeItem('adminLoggedIn');
       if (unsubscribe) {
         answersRef.off('value', unsubscribe);
         unsubscribe = null;
       }
-    }
+      showPage('main');
+    };
 
-    // Автоматический вход, если сессия сохранена
+    // Закрытие модального окна
+    window.onkeydown = (e) => {
+      if (e.key === 'Escape') document.getElementById('adminModal').classList.remove('active');
+    };
+    document.getElementById('adminModal').onclick = (e) => {
+      if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
+    };
+
+    // Сброс данных
+    document.getElementById('resetDataBtn').onclick = () => {
+      if (confirm('Удалить все ответы?')) {
+        answersRef.remove();
+        // слушатель сам вызовет updateStats с пустым массивом
+      }
+    };
+
+    // Автоматический вход, если сессия активна
     if (sessionStorage.getItem('adminLoggedIn') === 'true') {
-      showPage('admin');
-      startListening();
+      openAdmin();
     }
 
-    // ───── ФОН С ЧАСТИЦАМИ ─────
+    // ── ФОН ──
     const canvas = document.getElementById('particleCanvas');
     const ctx = canvas.getContext('2d');
     let particles = [];
