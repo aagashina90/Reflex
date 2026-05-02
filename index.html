@@ -70,18 +70,18 @@
       <h2 style="text-align:center;">Рефлексия</h2>
       <p class="question-text">Понравился ли Вам урок?</p>
       <div class="options-grid" id="optionsContainer">
-        <div class="option-card" data-value="Всё понял / Всё получилось">
+        <div class="option-card" data-value="Всё понял / Всё получилось" onclick="selectOption(this)">
           <div class="option-radio"></div> Всё понял / Всё получилось
         </div>
-        <div class="option-card" data-value="Есть вопросы / Не всё понятно">
+        <div class="option-card" data-value="Есть вопросы / Не всё понятно" onclick="selectOption(this)">
           <div class="option-radio"></div> Есть вопросы / Не всё понятно
         </div>
-        <div class="option-card" data-value="Ничего не понял / Было сложно">
+        <div class="option-card" data-value="Ничего не понял / Было сложно" onclick="selectOption(this)">
           <div class="option-radio"></div> Ничего не понял / Было сложно
         </div>
       </div>
       <p class="error-msg" id="surveyError">Выберите вариант</p>
-      <button class="btn-primary" id="btnSubmitSurvey" style="width:100%;">Отправить</button>
+      <button class="btn-primary" id="btnSubmitSurvey" style="width:100%;" onclick="submitAnswer()">Отправить</button>
     </div>
   </div>
 
@@ -91,7 +91,7 @@
       <div style="font-size:4rem;">✅</div>
       <h2>Спасибо!</h2>
       <p style="color:#a0a0b0;">Ваш отзыв сохранён.</p>
-      <button class="btn-primary" id="btnBackToMain">На главную</button>
+      <button class="btn-primary" id="btnBackToMain" onclick="showPage('main')">На главную</button>
     </div>
   </div>
 
@@ -123,11 +123,11 @@
             <div class="battery-inner"><div class="battery-fill" id="batteryFill"></div></div>
             <div class="battery-percent" id="batteryPercent">0%</div>
           </div>
-          <button class="reset-btn" id="resetDataBtn" title="Сбросить">↻</button>
+          <button class="reset-btn" id="resetDataBtn" title="Сбросить" onclick="resetAnswers()">↻</button>
         </div>
       </div>
     </div>
-    <button class="btn-primary" id="btnLeaveAdmin" style="margin-top:20px;">Выйти</button>
+    <button class="btn-primary" id="btnLeaveAdmin" style="margin-top:20px;" onclick="leaveAdmin()">Выйти</button>
   </div>
 
   <!-- МОДАЛЬНОЕ ОКНО -->
@@ -137,7 +137,7 @@
       <input id="adminLogin" placeholder="Логин" autocomplete="off"><br>
       <input type="password" id="adminPass" placeholder="Пароль" autocomplete="off"><br>
       <p class="error-msg" id="adminError">Неверный логин или пароль</p>
-      <button class="btn-primary" id="btnAdminLogin" style="width:100%;">Войти</button>
+      <button class="btn-primary" id="btnAdminLogin" style="width:100%;" onclick="adminLogin()">Войти</button>
     </div>
   </div>
 
@@ -155,7 +155,6 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     const answersRef = database.ref('answers');
-    console.log('Firebase инициализирован, ref:', answersRef.toString());
 
     const ADMIN = { login:'admin', password:'011290' };
     const pages = {
@@ -164,66 +163,58 @@
       thanks: document.getElementById('pageThanks'),
       admin: document.getElementById('pageAdmin')
     };
-    let selectedAnswer = null;
-    let unsubscribe = null;
+    window.selectedAnswer = null;  // глобальная, чтобы inline onclick имел доступ
+    window.unsubscribe = null;
 
-    function showPage(name) {
+    window.showPage = function(name) {
       Object.values(pages).forEach(p => p.classList.remove('active'));
       if (pages[name]) pages[name].classList.add('active');
       console.log('Переход на страницу:', name);
-    }
+    };
 
-    // ── Опрос ──
-    document.getElementById('btnOpenFeedback').addEventListener('click', () => {
-      selectedAnswer = null;
-      document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
-      document.getElementById('surveyError').style.display = 'none';
-      showPage('survey');
-    });
-
-    document.getElementById('optionsContainer').addEventListener('click', (e) => {
-      const card = e.target.closest('.option-card');
-      if (!card) return;
+    // Выбор варианта (inline)
+    window.selectOption = function(card) {
       document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
-      selectedAnswer = card.dataset.value;
-      console.log('Выбран вариант:', selectedAnswer);
-    });
+      window.selectedAnswer = card.dataset.value;
+      document.getElementById('surveyError').style.display = 'none';
+      console.log('Выбран вариант:', window.selectedAnswer);
+    };
 
-    document.getElementById('btnSubmitSurvey').addEventListener('click', () => {
-      if (!selectedAnswer) {
+    // Отправка ответа
+    window.submitAnswer = function() {
+      console.log('Клик по кнопке Отправить, выбранный ответ:', window.selectedAnswer);
+      if (!window.selectedAnswer) {
         document.getElementById('surveyError').style.display = 'block';
         return;
       }
-      console.log('Отправка ответа...');
-      answersRef.push(selectedAnswer)
+      console.log('Отправка ответа в Firebase...');
+      answersRef.push(window.selectedAnswer)
         .then(() => {
-          console.log('Ответ успешно записан в Firebase');
+          console.log('Ответ успешно записан');
+          window.selectedAnswer = null;
           showPage('thanks');
         })
         .catch(err => {
           console.error('Ошибка отправки:', err);
-          alert('Ошибка отправки: ' + err.message);
+          alert('Ошибка: ' + err.message);
         });
-    });
+    };
 
-    document.getElementById('btnBackToMain').addEventListener('click', () => showPage('main'));
-
-    // ── Админ ──
-    function startListening() {
-      if (unsubscribe) {
+    // Слушатель админки
+    window.startListening = function() {
+      if (window.unsubscribe) {
         console.log('Отключаем старый слушатель');
-        answersRef.off('value', unsubscribe);
-        unsubscribe = null;
+        answersRef.off('value', window.unsubscribe);
       }
       console.log('Запуск слушателя Firebase...');
-      unsubscribe = answersRef.on('value', (snapshot) => {
+      window.unsubscribe = answersRef.on('value', (snapshot) => {
         const answers = [];
         snapshot.forEach(child => answers.push(child.val()));
-        console.log('Получены данные из Firebase:', answers);
+        console.log('Получены данные:', answers);
         updateStats(answers);
       });
-    }
+    };
 
     function updateStats(answers) {
       const counts = {
@@ -246,19 +237,9 @@
       fill.style.height = level + '%';
       document.getElementById('batteryPercent').textContent = level + '%';
       fill.style.backgroundColor = level <= 25 ? '#F44336' : level <= 50 ? '#FF9800' : level <= 75 ? '#FFC107' : '#4CAF50';
-      console.log('Статистика обновлена. Заряд:', level + '%');
     }
 
-    document.getElementById('adminTrigger').addEventListener('click', () => {
-      if (sessionStorage.getItem('adminLoggedIn') === 'true') {
-        showPage('admin');
-        startListening();
-      } else {
-        document.getElementById('adminModal').classList.add('active');
-      }
-    });
-
-    document.getElementById('btnAdminLogin').addEventListener('click', () => {
+    window.adminLogin = function() {
       const login = document.getElementById('adminLogin').value.trim();
       const pass = document.getElementById('adminPass').value.trim();
       if (login === ADMIN.login && pass === ADMIN.password) {
@@ -269,31 +250,49 @@
       } else {
         document.getElementById('adminError').style.display = 'block';
       }
-    });
+    };
 
-    document.getElementById('btnLeaveAdmin').addEventListener('click', () => {
+    window.leaveAdmin = function() {
       sessionStorage.removeItem('adminLoggedIn');
-      if (unsubscribe) {
-        answersRef.off('value', unsubscribe);
-        unsubscribe = null;
-        console.log('Слушатель отключен');
+      if (window.unsubscribe) {
+        answersRef.off('value', window.unsubscribe);
+        window.unsubscribe = null;
       }
       showPage('main');
+    };
+
+    window.resetAnswers = function() {
+      if (confirm('Удалить все ответы?')) {
+        answersRef.remove()
+          .then(() => console.log('Все ответы удалены'))
+          .catch(err => console.error(err));
+      }
+    };
+
+    // Открытие админки через точку
+    document.getElementById('adminTrigger').addEventListener('click', () => {
+      if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+        showPage('admin');
+        startListening();
+      } else {
+        document.getElementById('adminModal').classList.add('active');
+      }
     });
 
+    // Кнопка "Оставить отзыв" с главной
+    btnOpenFeedback.addEventListener('click', () => {
+      window.selectedAnswer = null;
+      document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+      document.getElementById('surveyError').style.display = 'none';
+      showPage('survey');
+    });
+
+    // Закрытие модалки
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') document.getElementById('adminModal').classList.remove('active');
     });
     document.getElementById('adminModal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
-    });
-
-    document.getElementById('resetDataBtn').addEventListener('click', () => {
-      if (confirm('Удалить все ответы?')) {
-        answersRef.remove()
-          .then(() => console.log('Все ответы удалены'))
-          .catch(err => console.error('Ошибка удаления:', err));
-      }
     });
 
     // Авто-вход
