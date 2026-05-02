@@ -250,20 +250,23 @@
   <script>
     // ═══════════════ НАСТРОЙКА FIREBASE ═══════════════
     // ЗАМЕНИТЕ ЭТИ ДАННЫЕ НА СВОИ
-    const firebaseConfig = {
-      apiKey: "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-      authDomain: "your-project.firebaseapp.com",
-      databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-      projectId: "your-project",
-      storageBucket: "your-project.appspot.com",
-      messagingSenderId: "000000000000",
-      appId: "1:000000000000:web:xxxxxxxxxxxxxxxx"
-    };
-    // Инициализация Firebase
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-    const answersRef = database.ref('answers');
+   // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAgWXWYlpESoxYl-mYu_pW5jAU9EpHm0Kw",
+  authDomain: "informatics-reflex.firebaseapp.com",
+  projectId: "informatics-reflex",
+  storageBucket: "informatics-reflex.firebasestorage.app",
+  messagingSenderId: "222008361888",
+  appId: "1:222008361888:web:c0edc0096bfe3a33f35ac5"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
     // ═══════════════ ЛОГИКА САЙТА ═══════════════
     const ADMIN = { login: 'admin', password: '011290' };
 
