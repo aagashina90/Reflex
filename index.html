@@ -104,7 +104,7 @@
       <div class="reflection-card">
         <div style="text-align:center; width:100%;">
           <h1 style="color:#1a1d26;">🔋 Рефлексия урока</h1>
-          <p style="color:#5a5d66;">Обновляется мгновенно</p>
+          <p style="color:#5a5d66; margin-top:4px;">Всего ответов: <span id="totalAnswers">0</span></p>
         </div>
         <div class="stats-panel">
           <div class="stat-card green">
@@ -145,7 +145,7 @@
   </div>
 
   <script>
-    // ───── КОНФИГ FIREBASE (исправленный URL) ─────
+    // ───── КОНФИГ FIREBASE ─────
     const firebaseConfig = {
       apiKey: "AIzaSyAgWXWYlpESoxYl-mYu_pW5jAU9EpHm0Kw",
       authDomain: "informatics-reflex.firebaseapp.com",
@@ -206,16 +206,18 @@
 
     document.getElementById('btnBackToMain').onclick = () => showPage('main');
 
-    // Администратор
+    // Администратор: открыть модалку или страницу
     document.getElementById('adminTrigger').onclick = () => {
       if (sessionStorage.getItem('adminLoggedIn') === 'true') {
         showPage('admin');
-        startListening();
+        // Запускаем слушатель (если ещё не запущен)
+        if (!unsubscribe) startListening();
       } else {
         document.getElementById('adminModal').classList.add('active');
       }
     };
 
+    // Вход
     document.getElementById('btnAdminLogin').onclick = () => {
       const login = document.getElementById('adminLogin').value.trim();
       const pass = document.getElementById('adminPass').value.trim();
@@ -223,19 +225,20 @@
         sessionStorage.setItem('adminLoggedIn', 'true');
         document.getElementById('adminModal').classList.remove('active');
         showPage('admin');
-        startListening();
+        if (!unsubscribe) startListening();
       } else {
         document.getElementById('adminError').style.display = 'block';
       }
     };
 
+    // Выход
     document.getElementById('btnLeaveAdmin').onclick = () => {
       sessionStorage.removeItem('adminLoggedIn');
       stopListening();
       showPage('main');
     };
 
-    // Закрытие модального окна по Escape
+    // Закрытие модалки по Escape и клику вне
     window.onkeydown = (e) => {
       if (e.key === 'Escape') document.getElementById('adminModal').classList.remove('active');
     };
@@ -243,41 +246,54 @@
       if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
     };
 
-    // Сброс данных
+    // Сброс всех ответов
     document.getElementById('resetDataBtn').onclick = () => {
-      if (confirm('Удалить все ответы?')) answersRef.remove();
+      if (confirm('Удалить все ответы?')) {
+        answersRef.remove()
+          .then(() => console.log('Все ответы удалены'))
+          .catch(err => alert('Ошибка при удалении: ' + err.message));
+      }
     };
 
-    // Статистика
+    // ───── ОБРАБОТКА ДАННЫХ ─────
     function processSnapshot(snapshot) {
       const answers = [];
       snapshot.forEach(child => answers.push(child.val()));
+
+      // Подсчёт по категориям
       const counts = {
         'Всё понял / Всё получилось': 0,
         'Есть вопросы / Не всё понятно': 0,
         'Ничего не понял / Было сложно': 0
       };
       answers.forEach(a => { if (counts[a] !== undefined) counts[a]++; });
+
       document.getElementById('countClear').textContent = counts['Всё понял / Всё получилось'];
       document.getElementById('countQuestions').textContent = counts['Есть вопросы / Не всё понятно'];
       document.getElementById('countNothing').textContent = counts['Ничего не понял / Было сложно'];
+      document.getElementById('totalAnswers').textContent = answers.length;
 
+      // Расчёт уровня заряда (относительно числа ответов)
       let totalWeight = 0;
       answers.forEach(a => {
         if (a === 'Всё понял / Всё получилось') totalWeight += 100;
         else if (a === 'Есть вопросы / Не всё понятно') totalWeight += 50;
+        // Ничего не понял – 0 баллов
       });
-      const level = answers.length ? Math.round((totalWeight / (answers.length * 100)) * 100) : 0;
+      const level = answers.length > 0 ? Math.round((totalWeight / (answers.length * 100)) * 100) : 0;
+
       const fill = document.getElementById('batteryFill');
       fill.style.height = level + '%';
       document.getElementById('batteryPercent').textContent = level + '%';
+      // Цвет: красный → оранжевый → жёлтый → зелёный
       fill.style.backgroundColor = level <= 25 ? '#F44336' : level <= 50 ? '#FF9800' : level <= 75 ? '#FFC107' : '#4CAF50';
     }
 
     function startListening() {
-      if (unsubscribe) return;
+      if (unsubscribe) return; // уже слушаем
       unsubscribe = answersRef.on('value', processSnapshot);
     }
+
     function stopListening() {
       if (unsubscribe) {
         answersRef.off('value', unsubscribe);
@@ -285,13 +301,13 @@
       }
     }
 
-    // Автовход, если сессия сохранена
+    // Автоматический вход, если сессия сохранена
     if (sessionStorage.getItem('adminLoggedIn') === 'true') {
       showPage('admin');
       startListening();
     }
 
-    // Фоновая анимация
+    // ───── ФОН С ЧАСТИЦАМИ ─────
     const canvas = document.getElementById('particleCanvas');
     const ctx = canvas.getContext('2d');
     let particles = [];
