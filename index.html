@@ -142,7 +142,7 @@
   </div>
 
   <script>
-    // ───── КОНФИГ FIREBASE ─────
+    console.log('Скрипт загружен');
     const firebaseConfig = {
       apiKey: "AIzaSyAgWXWYlpESoxYl-mYu_pW5jAU9EpHm0Kw",
       authDomain: "informatics-reflex.firebaseapp.com",
@@ -152,10 +152,10 @@
       messagingSenderId: "222008361888",
       appId: "1:222008361888:web:c0edc0096bfe3a33f35ac5"
     };
-
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     const answersRef = database.ref('answers');
+    console.log('Firebase инициализирован, ref:', answersRef.toString());
 
     const ADMIN = { login:'admin', password:'011290' };
     const pages = {
@@ -165,58 +165,64 @@
       admin: document.getElementById('pageAdmin')
     };
     let selectedAnswer = null;
-    // Переменная хранит функцию отписки от слушателя
     let unsubscribe = null;
 
     function showPage(name) {
       Object.values(pages).forEach(p => p.classList.remove('active'));
       if (pages[name]) pages[name].classList.add('active');
+      console.log('Переход на страницу:', name);
     }
 
-    // ── ОПРОС ──
-    document.getElementById('btnOpenFeedback').onclick = () => {
+    // ── Опрос ──
+    document.getElementById('btnOpenFeedback').addEventListener('click', () => {
       selectedAnswer = null;
       document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
       document.getElementById('surveyError').style.display = 'none';
       showPage('survey');
-    };
-    document.getElementById('optionsContainer').onclick = (e) => {
+    });
+
+    document.getElementById('optionsContainer').addEventListener('click', (e) => {
       const card = e.target.closest('.option-card');
       if (!card) return;
       document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
       selectedAnswer = card.dataset.value;
-    };
-    document.getElementById('btnSubmitSurvey').onclick = () => {
+      console.log('Выбран вариант:', selectedAnswer);
+    });
+
+    document.getElementById('btnSubmitSurvey').addEventListener('click', () => {
       if (!selectedAnswer) {
         document.getElementById('surveyError').style.display = 'block';
         return;
       }
+      console.log('Отправка ответа...');
       answersRef.push(selectedAnswer)
-        .then(() => showPage('thanks'))
-        .catch(err => alert('Ошибка: ' + err.message));
-    };
-    document.getElementById('btnBackToMain').onclick = () => showPage('main');
+        .then(() => {
+          console.log('Ответ успешно записан в Firebase');
+          showPage('thanks');
+        })
+        .catch(err => {
+          console.error('Ошибка отправки:', err);
+          alert('Ошибка отправки: ' + err.message);
+        });
+    });
 
-    // ── АДМИН ──
-    function openAdmin() {
-      showPage('admin');
-      // Всегда пересоздаём слушатель, чтобы гарантировать актуальность
+    document.getElementById('btnBackToMain').addEventListener('click', () => showPage('main'));
+
+    // ── Админ ──
+    function startListening() {
       if (unsubscribe) {
+        console.log('Отключаем старый слушатель');
         answersRef.off('value', unsubscribe);
         unsubscribe = null;
       }
-      subscribeToAnswers();
-    }
-
-    function subscribeToAnswers() {
-      // Запускаем слушатель
+      console.log('Запуск слушателя Firebase...');
       unsubscribe = answersRef.on('value', (snapshot) => {
         const answers = [];
         snapshot.forEach(child => answers.push(child.val()));
+        console.log('Получены данные из Firebase:', answers);
         updateStats(answers);
       });
-      console.log('Слушатель запущен');
     }
 
     function updateStats(answers) {
@@ -226,77 +232,77 @@
         'Ничего не понял / Было сложно': 0
       };
       answers.forEach(a => { if (counts[a] !== undefined) counts[a]++; });
-
       document.getElementById('countClear').textContent = counts['Всё понял / Всё получилось'];
       document.getElementById('countQuestions').textContent = counts['Есть вопросы / Не всё понятно'];
       document.getElementById('countNothing').textContent = counts['Ничего не понял / Было сложно'];
       document.getElementById('totalAnswers').textContent = answers.length;
-
       let totalWeight = 0;
       answers.forEach(a => {
         if (a === 'Всё понял / Всё получилось') totalWeight += 100;
         else if (a === 'Есть вопросы / Не всё понятно') totalWeight += 50;
       });
-      const level = answers.length > 0 ? Math.round((totalWeight / (answers.length * 100)) * 100) : 0;
+      const level = answers.length ? Math.round((totalWeight / (answers.length * 100)) * 100) : 0;
       const fill = document.getElementById('batteryFill');
       fill.style.height = level + '%';
       document.getElementById('batteryPercent').textContent = level + '%';
       fill.style.backgroundColor = level <= 25 ? '#F44336' : level <= 50 ? '#FF9800' : level <= 75 ? '#FFC107' : '#4CAF50';
-      console.log('Статистика обновлена:', counts, 'Заряд:', level);
+      console.log('Статистика обновлена. Заряд:', level + '%');
     }
 
-    // Вход / выход
-    document.getElementById('adminTrigger').onclick = () => {
+    document.getElementById('adminTrigger').addEventListener('click', () => {
       if (sessionStorage.getItem('adminLoggedIn') === 'true') {
-        openAdmin();
+        showPage('admin');
+        startListening();
       } else {
         document.getElementById('adminModal').classList.add('active');
       }
-    };
+    });
 
-    document.getElementById('btnAdminLogin').onclick = () => {
+    document.getElementById('btnAdminLogin').addEventListener('click', () => {
       const login = document.getElementById('adminLogin').value.trim();
       const pass = document.getElementById('adminPass').value.trim();
       if (login === ADMIN.login && pass === ADMIN.password) {
         sessionStorage.setItem('adminLoggedIn', 'true');
         document.getElementById('adminModal').classList.remove('active');
-        openAdmin();
+        showPage('admin');
+        startListening();
       } else {
         document.getElementById('adminError').style.display = 'block';
       }
-    };
+    });
 
-    document.getElementById('btnLeaveAdmin').onclick = () => {
+    document.getElementById('btnLeaveAdmin').addEventListener('click', () => {
       sessionStorage.removeItem('adminLoggedIn');
       if (unsubscribe) {
         answersRef.off('value', unsubscribe);
         unsubscribe = null;
+        console.log('Слушатель отключен');
       }
       showPage('main');
-    };
+    });
 
-    // Закрытие модального окна
-    window.onkeydown = (e) => {
+    window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') document.getElementById('adminModal').classList.remove('active');
-    };
-    document.getElementById('adminModal').onclick = (e) => {
+    });
+    document.getElementById('adminModal').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
-    };
+    });
 
-    // Сброс данных
-    document.getElementById('resetDataBtn').onclick = () => {
+    document.getElementById('resetDataBtn').addEventListener('click', () => {
       if (confirm('Удалить все ответы?')) {
-        answersRef.remove();
-        // слушатель сам вызовет updateStats с пустым массивом
+        answersRef.remove()
+          .then(() => console.log('Все ответы удалены'))
+          .catch(err => console.error('Ошибка удаления:', err));
       }
-    };
+    });
 
-    // Автоматический вход, если сессия активна
+    // Авто-вход
     if (sessionStorage.getItem('adminLoggedIn') === 'true') {
-      openAdmin();
+      showPage('admin');
+      startListening();
     }
 
-    // ── ФОН ──
+    // Фон
     const canvas = document.getElementById('particleCanvas');
     const ctx = canvas.getContext('2d');
     let particles = [];
