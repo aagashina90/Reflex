@@ -135,7 +135,7 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const answersListRef = db.ref('answers/list'); // единый узел с массивом
+    const answersListRef = db.ref('answers/list');
 
     const ADMIN = { login:'admin', password:'011290' };
     const pages = {
@@ -150,10 +150,8 @@
     function showPage(name) {
       Object.values(pages).forEach(p => p.classList.remove('active'));
       pages[name].classList.add('active');
-      console.log('Страница:', name);
     }
 
-    // Обработчики после загрузки DOM
     window.addEventListener('load', () => {
       document.getElementById('btnOpenFeedback').addEventListener('click', () => {
         selectedAnswer = null;
@@ -168,27 +166,23 @@
         document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
         selectedAnswer = card.dataset.value;
-        console.log('Выбран вариант:', selectedAnswer);
       });
 
       document.getElementById('btnSubmitSurvey').addEventListener('click', async () => {
-        console.log('Клик Отправить, выбрано:', selectedAnswer);
         if (!selectedAnswer) {
           document.getElementById('surveyError').style.display = 'block';
           return;
         }
         try {
-          // Атомарно получаем текущий массив и добавляем ответ
-          const snapshot = await answersListRef.once('value');
-          let answers = snapshot.val() || [];
+          const snap = await answersListRef.once('value');
+          let answers = snap.val() || [];
+          // Преобразуем объект (если старые данные были в виде ключей) в массив
           if (!Array.isArray(answers)) answers = Object.values(answers);
           answers.push(selectedAnswer);
           await answersListRef.set(answers);
-          console.log('Ответ сохранён, новый массив:', answers);
           selectedAnswer = null;
           showPage('thanks');
         } catch (err) {
-          console.error('Ошибка сохранения:', err);
           alert('Ошибка: ' + err.message);
         }
       });
@@ -228,20 +222,16 @@
       });
 
       document.getElementById('resetDataBtn').addEventListener('click', () => {
-        if (confirm('Удалить все ответы?')) {
-          answersListRef.set([])
-            .then(() => console.log('Данные сброшены'))
-            .catch(err => console.error(err));
+        if (confirm('Удалить все ответы (рекомендуется перед первым использованием)?')) {
+          answersListRef.set([]);
         }
       });
 
       function startListening() {
         if (unsubscribe) answersListRef.off('value', unsubscribe);
-        console.log('Слушатель запущен');
-        unsubscribe = answersListRef.on('value', (snapshot) => {
-          let answers = snapshot.val() || [];
+        unsubscribe = answersListRef.on('value', (snap) => {
+          let answers = snap.val() || [];
           if (!Array.isArray(answers)) answers = Object.values(answers);
-          console.log('Данные из Firebase:', answers);
           updateStats(answers);
         });
       }
@@ -270,7 +260,7 @@
         fill.style.backgroundColor = avg <= 25 ? '#F44336' : avg <= 50 ? '#FF9800' : avg <= 75 ? '#FFC107' : '#4CAF50';
       }
 
-      // Автовход администратора
+      // Автовход
       if (sessionStorage.getItem('adminLoggedIn') === 'true') {
         showPage('admin');
         startListening();
