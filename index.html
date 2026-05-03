@@ -176,6 +176,7 @@
         try {
           const snap = await answersListRef.once('value');
           let answers = snap.val() || [];
+          // Преобразуем объект (если старые данные были в виде ключей) в массив
           if (!Array.isArray(answers)) answers = Object.values(answers);
           answers.push(selectedAnswer);
           await answersListRef.set(answers);
@@ -242,27 +243,21 @@
           'Ничего не понял / Было сложно': 0
         };
         answers.forEach(a => { if (counts[a] !== undefined) counts[a]++; });
-
         document.getElementById('countClear').textContent = counts['Всё понял / Всё получилось'];
         document.getElementById('countQuestions').textContent = counts['Есть вопросы / Не всё понятно'];
         document.getElementById('countNothing').textContent = counts['Ничего не понял / Было сложно'];
         document.getElementById('totalAnswers').textContent = answers.length;
 
-        // Новые веса: 100%, 90%, -5%
         let totalPercent = 0;
         answers.forEach(a => {
           if (a === 'Всё понял / Всё получилось') totalPercent += 100;
-          else if (a === 'Есть вопросы / Не всё понятно') totalPercent += 90;
-          else if (a === 'Ничего не понял / Было сложно') totalPercent += -5;
+          else if (a === 'Есть вопросы / Не всё понятно') totalPercent += 50;
         });
-        const avgPercent = answers.length ? Math.round(totalPercent / answers.length) : 0;
-        const level = Math.min(100, Math.max(0, avgPercent)); // ограничение 0–100%
-
+        const avg = answers.length ? Math.round(totalPercent / answers.length) : 0;
         const fill = document.getElementById('batteryFill');
-        fill.style.height = level + '%';
-        document.getElementById('batteryPercent').textContent = level + '%';
-        // Цвет по прежним порогам
-        fill.style.backgroundColor = level <= 25 ? '#F44336' : level <= 50 ? '#FF9800' : level <= 75 ? '#FFC107' : '#4CAF50';
+        fill.style.height = avg + '%';
+        document.getElementById('batteryPercent').textContent = avg + '%';
+        fill.style.backgroundColor = avg <= 25 ? '#F44336' : avg <= 50 ? '#FF9800' : avg <= 75 ? '#FFC107' : '#4CAF50';
       }
 
       // Автовход
