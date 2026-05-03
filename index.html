@@ -248,20 +248,19 @@
         document.getElementById('countNothing').textContent = counts['Ничего не понял / Было сложно'];
         document.getElementById('totalAnswers').textContent = answers.length;
 
-        // Новые веса: 100%, 90%, -5%
+        // Новые веса: 100%, 99%, 95%
         let totalPercent = 0;
         answers.forEach(a => {
           if (a === 'Всё понял / Всё получилось') totalPercent += 100;
-          else if (a === 'Есть вопросы / Не всё понятно') totalPercent += 90;
-          else if (a === 'Ничего не понял / Было сложно') totalPercent += -5;
+          else if (a === 'Есть вопросы / Не всё понятно') totalPercent += 99;   // снижение не более 1%
+          else if (a === 'Ничего не понял / Было сложно') totalPercent += 95; // снижение не более 5%
         });
         const avgPercent = answers.length ? Math.round(totalPercent / answers.length) : 0;
-        const level = Math.min(100, Math.max(0, avgPercent)); // ограничение 0–100%
+        const level = Math.min(100, Math.max(0, avgPercent));
 
         const fill = document.getElementById('batteryFill');
         fill.style.height = level + '%';
         document.getElementById('batteryPercent').textContent = level + '%';
-        // Цвет по прежним порогам
         fill.style.backgroundColor = level <= 25 ? '#F44336' : level <= 50 ? '#FF9800' : level <= 75 ? '#FFC107' : '#4CAF50';
       }
 
